@@ -1,50 +1,40 @@
 // https://developers.tron.network/reference/tronweb-object
 const TronWeb = require('tronweb')
+const { WALLET_PRIVATE_KEY } = require('../creds')
 
+let tronWeb
 
-// tronWeb.trx.getAccount('TTSFjEG3Lu9WkHdp4JrWYhbGP6K1REqnGQ')
-//     .then(el=>console.log(el))
-//     .catch(err=>console.log(err))
+async function init() {
+  if (!tronWeb) {
+    const HttpProvider = TronWeb.providers.HttpProvider
+    const fullNode = new HttpProvider("https://api.trongrid.io")
+    const solidityNode = new HttpProvider("https://api.trongrid.io")
+    const eventServer = new HttpProvider("https://api.trongrid.io")
+    // Set if and when relevant
+    // tronWeb.setHeader({"TRON-PRO-API-KEY": 'your api key'})
 
-// console.log(tronWeb.createAccount())
+    tronWeb = new TronWeb(fullNode, solidityNode, eventServer, WALLET_PRIVATE_KEY)
+  }
 
-// console.log(tronWeb.address.toHex("TQooBX9o8iSSprLWW96YShBogx7Uwisuim"))
-
-let tronWeb;
-
-async function init(){
-    if ( !tronWeb ) {
-        const HttpProvider = TronWeb.providers.HttpProvider;
-        const fullNode = new HttpProvider("https://api.trongrid.io");
-        const solidityNode = new HttpProvider("https://api.trongrid.io");
-        const eventServer = new HttpProvider("https://api.trongrid.io");
-        // tronWeb.setHeader({"TRON-PRO-API-KEY": 'your api key'});
-        
-        /**
-         * 
-         * console.log(tronWeb.createAccount())
-         * 
-         */
-        const privateKey = "67DFEE24F16B56F63E22DCA32EE18945FFBA5A6BEDF682CC87A5B1AAAEF56168";
-        
-        tronWeb = new TronWeb(fullNode,solidityNode,eventServer,privateKey);
-    }
-    // tronWeb.setAddress("TQooBX9o8iSSprLWW96YShBogx7Uwisuim");
-    
-    // tronWeb.isConnected()
-    //     .then(el=>console.log(el))
-    //     .catch(err=>console.log(err))
-    return tronWeb
+  return tronWeb
 }
 
-async function triggerContract(contractAddress, cb, ...args){
-    let tronWeb = await init()
-    let contract = await tronWeb.contract().at(contractAddress);
-    if ( args.length > 0 ) {
-        return await contract[cb](args[0]).call();    
+async function triggerContract(contractAddress, cb, ...args) {
+  let tronWeb = await init()
+  let contract = await tronWeb.contract().at(contractAddress)
+
+  try {
+    console.info('Triggering contract method', cb)
+    if (cb === 'transfer') {
+      return await contract[cb](...args).send()
     } else {
-        return await contract[cb]().call();
+      return await contract[cb](...args).call()
     }
+  } catch (err) {
+    console.error('Failed contract call', cb, 'with args', args)
+
+    throw err
+  }
 }
 
 module.exports = { triggerContract }
